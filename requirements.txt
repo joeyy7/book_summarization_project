@@ -1,0 +1,11 @@
+streamlit
+mysql-connector-python
+transformers
+torch
+nltk
+keybert
+scikit-learn
+plotly
+python-docx  # For .docx files
+PyPDF2      # For .pdf files
+pandas      # Already needed, explicit for clarity
