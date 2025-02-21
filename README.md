@@ -16,3 +16,4 @@ CREATE TABLE books (
 );
 "
 3. do the necessary changes eg. database password and username changes in the app.py code.
+4. run using "stramlit run app.py" and then open the local web.
