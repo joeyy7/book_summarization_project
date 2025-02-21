@@ -1,6 +1,6 @@
 import streamlit as st
 import mysql.connector
-from transformers import PegasusTokenizer, PegasusForConditionalGeneration, DistilBertTokenizer, DistilBertForSequenceClassification
+from transformers import BartTokenizer, BartForConditionalGeneration, DistilBertTokenizer, DistilBertForSequenceClassification
 import torch
 from nltk.tokenize import sent_tokenize
 from keybert import KeyBERT
@@ -17,9 +17,9 @@ nltk.download('stopwords')
 # Load models (cached)
 @st.cache_resource
 def load_summarization_model():
-    model_name = "google/pegasus-xsum"
-    tokenizer = PegasusTokenizer.from_pretrained(model_name)
-    model = PegasusForConditionalGeneration.from_pretrained(model_name)
+    model_name = "facebook/bart-large-cnn"
+    tokenizer = BartTokenizer.from_pretrained(model_name)
+    model = BartForConditionalGeneration.from_pretrained(model_name)
     return tokenizer, model
 
 @st.cache_resource
@@ -67,8 +67,10 @@ def process_input(title, input_text, summary_length):
     with st.spinner("Analyzing the text..."):
         # Preprocess input: remove title and metadata if provided
         if title and title in input_text:
+            # Remove the title and any following line (assuming metadata follows)
             lines = input_text.split('\n')
             filtered_lines = [line for line in lines if line.strip() and line.strip() != title]
+            # Skip first few lines if they look like metadata (e.g., authorship)
             content_start = 0
             for i, line in enumerate(filtered_lines):
                 if "by " in line.lower() or "institute" in line.lower() or len(line.split()) < 5:
@@ -83,19 +85,19 @@ def process_input(title, input_text, summary_length):
             st.error("No content found after removing title/metadata.")
             return
 
-        # Summarization with PEGASUS
+        # Summarization with BART
         inputs = summ_tokenizer(input_for_summary, max_length=1024, truncation=True, return_tensors="pt")
         summary_ids = summ_model.generate(
             inputs["input_ids"],
             max_length=summary_length,
-            min_length=max(60, summary_length // 3),
-            length_penalty=1.0,
-            num_beams=8,  # Higher beams for PEGASUS quality
-            early_stopping=False
+            min_length=max(60, summary_length // 3),  # Increase min_length for more detail
+            length_penalty=1.0,  # Reduce penalty to encourage longer output
+            num_beams=6,  # Increase beams for better quality
+            early_stopping=False  # Allow full generation
         )
         summary = summ_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-        # Key Aspects with KeyBERT (use original input)
+        # Key Aspects with KeyBERT (use original input for broader context)
         key_aspects = keybert_model.extract_keywords(input_text, keyphrase_ngram_range=(1, 2), stop_words='english', top_n=10)
         key_aspects = [kw[0] for kw in key_aspects]
 
